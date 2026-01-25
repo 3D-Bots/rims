@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Alert container positioning */
+.alert-container {
+  margin-bottom: 1rem;
+}
+
+/* Table styling */
+table th {
+  cursor: pointer;
+  user-select: none;
+}
+
+table td {
+  vertical-align: middle;
+}
+
+/* Card styling */
+.card-header h4 {
+  margin-bottom: 0;
+}
+
+/* Footer styling */
+footer {
+  margin-top: auto;
+}
+
+/* Link styling in tables */
+table a {
+  text-decoration: none;
+}
+
+table a:hover {
+  text-decoration: underline;
+}
