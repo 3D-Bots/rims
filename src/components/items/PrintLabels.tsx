@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Card, Form, Button, Row, Col, Table, Badge } from 'react-bootstrap';
 import { FaPrint, FaBarcode, FaQrcode, FaCheck } from 'react-icons/fa';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
 import * as itemService from '../../services/itemService';
-import { Item } from '../../types/Item';
 
 type LabelType = 'barcode' | 'qrcode';
 type LabelSize = 'small' | 'medium' | 'large';
@@ -25,7 +24,7 @@ const LABEL_SIZES = {
 };
 
 export default function PrintLabels() {
-  const items = itemService.getAllItems();
+  const items = useMemo(() => itemService.getAllItems(), []);
   const printRef = useRef<HTMLDivElement>(null);
 
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -40,12 +39,12 @@ export default function PrintLabels() {
   const [searchTerm, setSearchTerm] = useState('');
   const [generatedLabels, setGeneratedLabels] = useState<Map<number, string>>(new Map());
 
-  const filteredItems = items.filter(
+  const filteredItems = useMemo(() => items.filter(
     (item) =>
       item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.location.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [items, searchTerm]);
 
   const toggleItem = (id: number) => {
     setSelectedIds((prev) => {
@@ -67,53 +66,64 @@ export default function PrintLabels() {
     setSelectedIds(new Set());
   };
 
-  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+  const selectedItems = useMemo(() =>
+    items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds]
+  );
 
-  useEffect(() => {
-    const generateLabels = async () => {
-      const labels = new Map<number, string>();
-      const sizeConfig = LABEL_SIZES[config.size];
+  // Stable string key for selected IDs
+  const selectedIdsKey = useMemo(() =>
+    Array.from(selectedIds).sort().join(','),
+    [selectedIds]
+  );
 
-      for (const item of selectedItems) {
-        const barcodeValue = item.barcode || `RIMS-${String(item.id).padStart(4, '0')}`;
+  const generateLabels = useCallback(async () => {
+    if (selectedItems.length === 0) {
+      setGeneratedLabels(new Map());
+      return;
+    }
 
-        if (config.type === 'barcode') {
-          const canvas = document.createElement('canvas');
-          try {
-            JsBarcode(canvas, barcodeValue, {
-              format: 'CODE128',
-              width: sizeConfig.barcodeWidth,
-              height: sizeConfig.barcodeHeight,
-              displayValue: true,
-              fontSize: 12,
-              margin: 5,
-            });
-            labels.set(item.id, canvas.toDataURL());
-          } catch {
-            labels.set(item.id, '');
-          }
-        } else {
-          try {
-            const dataUrl = await QRCode.toDataURL(barcodeValue, {
-              width: sizeConfig.qrSize,
-              margin: 1,
-            });
-            labels.set(item.id, dataUrl);
-          } catch {
-            labels.set(item.id, '');
-          }
+    const labels = new Map<number, string>();
+    const sizeConfig = LABEL_SIZES[config.size];
+
+    for (const item of selectedItems) {
+      const barcodeValue = item.barcode || `RIMS-${String(item.id).padStart(4, '0')}`;
+
+      if (config.type === 'barcode') {
+        const canvas = document.createElement('canvas');
+        try {
+          JsBarcode(canvas, barcodeValue, {
+            format: 'CODE128',
+            width: sizeConfig.barcodeWidth,
+            height: sizeConfig.barcodeHeight,
+            displayValue: true,
+            fontSize: 12,
+            margin: 5,
+          });
+          labels.set(item.id, canvas.toDataURL());
+        } catch {
+          labels.set(item.id, '');
+        }
+      } else {
+        try {
+          const dataUrl = await QRCode.toDataURL(barcodeValue, {
+            width: sizeConfig.qrSize,
+            margin: 1,
+          });
+          labels.set(item.id, dataUrl);
+        } catch (err) {
+          console.error('QR code generation failed:', err);
+          labels.set(item.id, '');
         }
       }
-
-      setGeneratedLabels(labels);
-    };
-
-    if (selectedItems.length > 0) {
-      generateLabels();
-    } else {
-      setGeneratedLabels(new Map());
     }
+
+    setGeneratedLabels(labels);
   }, [selectedItems, config.type, config.size]);
+
+  useEffect(() => {
+    generateLabels();
+  }, [selectedIdsKey, config.type, config.size]);
 
   const handlePrint = () => {
     if (!printRef.current) return;
