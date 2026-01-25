@@ -1,11 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Navbar, Nav, NavDropdown, Container } from 'react-bootstrap';
+import { Navbar, Nav, NavDropdown, Container, Button } from 'react-bootstrap';
+import { FaSun, FaMoon } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../../contexts/AlertContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function Header() {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { showSuccess } = useAlert();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -39,7 +42,15 @@ export default function Header() {
               </Nav.Link>
             )}
           </Nav>
-          <Nav>
+          <Nav className="align-items-center">
+            <Button
+              variant="link"
+              className="nav-link px-2"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDark ? <FaSun className="text-warning" /> : <FaMoon className="text-light" />}
+            </Button>
             {isAuthenticated ? (
               <NavDropdown title={user?.email} id="account-dropdown" align="end">
                 <NavDropdown.Item as={Link} to="/profile">

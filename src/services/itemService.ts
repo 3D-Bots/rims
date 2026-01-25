@@ -79,3 +79,38 @@ export function getTotalValue(): number {
   const items = getItems();
   return items.reduce((sum, item) => sum + item.value, 0);
 }
+
+export function deleteItems(ids: number[]): number {
+  const items = getItems();
+  const idsSet = new Set(ids);
+  const updatedItems = items.filter((item) => !idsSet.has(item.id));
+  const deletedCount = items.length - updatedItems.length;
+  saveItems(updatedItems);
+  return deletedCount;
+}
+
+export function updateItemsCategory(ids: number[], category: string): number {
+  const items = getItems();
+  const idsSet = new Set(ids);
+  let updatedCount = 0;
+
+  const updatedItems = items.map((item) => {
+    if (idsSet.has(item.id)) {
+      updatedCount++;
+      return {
+        ...item,
+        category,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return item;
+  });
+
+  saveItems(updatedItems);
+  return updatedCount;
+}
+
+export function getLowStockItems(threshold: number): Item[] {
+  const items = getItems();
+  return items.filter((item) => item.quantity <= threshold);
+}
