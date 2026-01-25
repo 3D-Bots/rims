@@ -27,14 +27,31 @@ export default function Header() {
         <Navbar.Collapse id="basic-navbar-nav">
           <Nav className="me-auto">
             {isAuthenticated && (
-              <NavDropdown title="Inventory" id="inventory-dropdown">
-                <NavDropdown.Item as={Link} to="/items">
-                  All Items
-                </NavDropdown.Item>
-                <NavDropdown.Item as={Link} to="/items/new">
-                  New Item
-                </NavDropdown.Item>
-              </NavDropdown>
+              <>
+                <NavDropdown title="Inventory" id="inventory-dropdown">
+                  <NavDropdown.Item as={Link} to="/items">
+                    All Items
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/items/new">
+                    New Item
+                  </NavDropdown.Item>
+                </NavDropdown>
+                <NavDropdown title="Reports" id="reports-dropdown">
+                  <NavDropdown.Item as={Link} to="/reports">
+                    Dashboard
+                  </NavDropdown.Item>
+                  <NavDropdown.Divider />
+                  <NavDropdown.Item as={Link} to="/reports/valuation">
+                    Inventory Valuation
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/reports/movement">
+                    Stock Movement
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/reports/custom">
+                    Custom Report
+                  </NavDropdown.Item>
+                </NavDropdown>
+              </>
             )}
             {isAdmin && (
               <Nav.Link as={Link} to="/users">
