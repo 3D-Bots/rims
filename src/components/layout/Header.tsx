@@ -35,6 +35,20 @@ export default function Header() {
                   <NavDropdown.Item as={Link} to="/items/new">
                     New Item
                   </NavDropdown.Item>
+                  <NavDropdown.Divider />
+                  <NavDropdown.Item as={Link} to="/items/import">
+                    Import Data
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/items/scanner">
+                    Barcode Scanner
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/items/labels">
+                    Print Labels
+                  </NavDropdown.Item>
+                  <NavDropdown.Divider />
+                  <NavDropdown.Item as={Link} to="/items/reorder">
+                    Reorder Alerts
+                  </NavDropdown.Item>
                 </NavDropdown>
                 <NavDropdown title="Reports" id="reports-dropdown">
                   <NavDropdown.Item as={Link} to="/reports">

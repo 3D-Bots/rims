@@ -133,3 +133,8 @@ export function getLowStockItems(threshold: number): Item[] {
   const items = getItems();
   return items.filter((item) => item.quantity <= threshold);
 }
+
+export function getItemsNeedingReorder(): Item[] {
+  const items = getItems();
+  return items.filter((item) => item.reorderPoint > 0 && item.quantity <= item.reorderPoint);
+}
