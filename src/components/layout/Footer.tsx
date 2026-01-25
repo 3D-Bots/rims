@@ -9,7 +9,7 @@ export default function Footer() {
         </p>
         <p className="mb-0">
           <a
-            href="https://github.com/DamageStudios/rims"
+            href="https://github.com/DamageLabs/rims"
             target="_blank"
             rel="noopener noreferrer"
           >
