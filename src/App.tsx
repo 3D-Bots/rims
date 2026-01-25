@@ -11,6 +11,10 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import ItemList from './components/items/ItemList';
 import ItemDetail from './components/items/ItemDetail';
 import ItemForm from './components/items/ItemForm';
+import DataImport from './components/items/DataImport';
+import BarcodeScanner from './components/items/BarcodeScanner';
+import PrintLabels from './components/items/PrintLabels';
+import ReorderAlerts from './components/items/ReorderAlerts';
 import UserList from './components/users/UserList';
 import UserDetail from './components/users/UserDetail';
 import Dashboard from './components/reports/Dashboard';
@@ -69,6 +73,38 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ItemForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="items/import"
+                  element={
+                    <ProtectedRoute>
+                      <DataImport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="items/scanner"
+                  element={
+                    <ProtectedRoute>
+                      <BarcodeScanner />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="items/labels"
+                  element={
+                    <ProtectedRoute>
+                      <PrintLabels />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="items/reorder"
+                  element={
+                    <ProtectedRoute>
+                      <ReorderAlerts />
                     </ProtectedRoute>
                   }
                 />

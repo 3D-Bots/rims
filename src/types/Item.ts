@@ -12,6 +12,8 @@ export interface Item {
   vendorUrl: string;
   category: string;
   location: string;
+  barcode: string;
+  reorderPoint: number;
   createdAt: string;
   updatedAt: string;
 }

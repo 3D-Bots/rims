@@ -1,15 +1,19 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, Form, Button, Row, Col, ButtonGroup } from 'react-bootstrap';
 import * as itemService from '../../services/itemService';
-import { Item, ItemFormData, CATEGORIES } from '../../types/Item';
+import { ItemFormData, CATEGORIES } from '../../types/Item';
 import { useAlert } from '../../contexts/AlertContext';
 
 export default function ItemForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showSuccess, showError } = useAlert();
   const isEditing = !!id;
+
+  // Get barcode from URL query param (from barcode scanner)
+  const initialBarcode = searchParams.get('barcode') || '';
 
   const [formData, setFormData] = useState<ItemFormData>({
     name: '',
@@ -23,6 +27,8 @@ export default function ItemForm() {
     vendorUrl: '',
     category: CATEGORIES[0],
     location: '',
+    barcode: initialBarcode,
+    reorderPoint: 0,
   });
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -43,6 +49,8 @@ export default function ItemForm() {
           vendorUrl: item.vendorUrl,
           category: item.category,
           location: item.location,
+          barcode: item.barcode,
+          reorderPoint: item.reorderPoint,
         });
         if (item.picture) {
           setPreviewImage(item.picture);
@@ -205,6 +213,35 @@ export default function ItemForm() {
                 value={formData.location}
                 onChange={handleChange}
               />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Form.Label column sm={3}>Barcode</Form.Label>
+            <Col sm={5}>
+              <Form.Control
+                type="text"
+                name="barcode"
+                value={formData.barcode}
+                onChange={handleChange}
+                placeholder="e.g., RIMS-0001 or UPC"
+              />
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Form.Label column sm={3}>Reorder Point</Form.Label>
+            <Col sm={5}>
+              <Form.Control
+                type="number"
+                name="reorderPoint"
+                value={formData.reorderPoint}
+                onChange={handleChange}
+                min={0}
+              />
+              <Form.Text className="text-muted">
+                Alert when quantity falls to or below this level
+              </Form.Text>
             </Col>
           </Row>
 

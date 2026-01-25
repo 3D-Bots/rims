@@ -123,6 +123,27 @@ export default function ItemDetail() {
           <Col md={9}>{item.category}</Col>
         </Row>
 
+        <Row className="mb-2">
+          <Col md={3} className="text-muted">Barcode</Col>
+          <Col md={9}>{item.barcode || <span className="text-muted">Not set</span>}</Col>
+        </Row>
+
+        <Row className="mb-2">
+          <Col md={3} className="text-muted">Reorder Point</Col>
+          <Col md={9}>
+            {item.reorderPoint > 0 ? (
+              <>
+                {item.reorderPoint}
+                {item.quantity <= item.reorderPoint && (
+                  <span className="badge bg-warning ms-2">Below threshold</span>
+                )}
+              </>
+            ) : (
+              <span className="text-muted">Not set</span>
+            )}
+          </Col>
+        </Row>
+
         <hr />
 
         <ButtonGroup>
