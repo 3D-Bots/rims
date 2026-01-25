@@ -1,0 +1,19 @@
+{
+  "name": "RIMS - React Inventory Management System",
+  "short_name": "RIMS",
+  "description": "Inventory management system for tracking electronic parts and components",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#212529",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "business"]
+}
