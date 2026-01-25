@@ -38,7 +38,7 @@ export default function Welcome() {
             </p>
             <p>
               <a
-                href="https://github.com/DamageStudios/rims"
+                href="https://github.com/DamageLabs/rims"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-primary"
