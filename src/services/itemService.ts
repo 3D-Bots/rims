@@ -1,5 +1,6 @@
 import { Item, ItemFormData } from '../types/Item';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storage';
+import * as stockHistoryService from './stockHistoryService';
 
 function getItems(): Item[] {
   return getFromStorage<Item[]>(STORAGE_KEYS.ITEMS) || [];
@@ -29,6 +30,7 @@ export function createItem(data: ItemFormData): Item {
   };
 
   saveItems([...items, newItem]);
+  stockHistoryService.recordItemCreated(newItem);
   return newItem;
 }
 
@@ -55,11 +57,13 @@ export function updateItem(id: number, data: Partial<ItemFormData>): Item | null
   updatedItems[itemIndex] = updatedItem;
   saveItems(updatedItems);
 
+  stockHistoryService.recordItemUpdated(existingItem, updatedItem);
   return updatedItem;
 }
 
 export function deleteItem(id: number): boolean {
   const items = getItems();
+  const itemToDelete = items.find((item) => item.id === id);
   const updatedItems = items.filter((item) => item.id !== id);
 
   if (updatedItems.length === items.length) {
@@ -67,6 +71,9 @@ export function deleteItem(id: number): boolean {
   }
 
   saveItems(updatedItems);
+  if (itemToDelete) {
+    stockHistoryService.recordItemDeleted(itemToDelete);
+  }
   return true;
 }
 
@@ -83,9 +90,15 @@ export function getTotalValue(): number {
 export function deleteItems(ids: number[]): number {
   const items = getItems();
   const idsSet = new Set(ids);
+  const itemsToDelete = items.filter((item) => idsSet.has(item.id));
   const updatedItems = items.filter((item) => !idsSet.has(item.id));
   const deletedCount = items.length - updatedItems.length;
   saveItems(updatedItems);
+
+  itemsToDelete.forEach((item) => {
+    stockHistoryService.recordItemDeleted(item);
+  });
+
   return deletedCount;
 }
 
@@ -93,10 +106,12 @@ export function updateItemsCategory(ids: number[], category: string): number {
   const items = getItems();
   const idsSet = new Set(ids);
   let updatedCount = 0;
+  const oldCategories = new Map<number, string>();
 
   const updatedItems = items.map((item) => {
     if (idsSet.has(item.id)) {
       updatedCount++;
+      oldCategories.set(item.id, item.category);
       return {
         ...item,
         category,
@@ -107,6 +122,10 @@ export function updateItemsCategory(ids: number[], category: string): number {
   });
 
   saveItems(updatedItems);
+
+  const affectedItems = updatedItems.filter((item) => idsSet.has(item.id));
+  stockHistoryService.recordBulkCategoryChange(affectedItems, oldCategories, category);
+
   return updatedCount;
 }
 

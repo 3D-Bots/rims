@@ -3,6 +3,7 @@ const STORAGE_KEYS = {
   ITEMS: 'rims_items',
   CURRENT_USER: 'rims_current_user',
   INITIALIZED: 'rims_initialized',
+  STOCK_HISTORY: 'rims_stock_history',
 } as const;
 
 export function getFromStorage<T>(key: string): T | null {

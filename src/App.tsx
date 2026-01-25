@@ -13,6 +13,10 @@ import ItemDetail from './components/items/ItemDetail';
 import ItemForm from './components/items/ItemForm';
 import UserList from './components/users/UserList';
 import UserDetail from './components/users/UserDetail';
+import Dashboard from './components/reports/Dashboard';
+import ValuationReport from './components/reports/ValuationReport';
+import MovementReport from './components/reports/MovementReport';
+import CustomReport from './components/reports/CustomReport';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
@@ -81,6 +85,38 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <UserDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports/valuation"
+                  element={
+                    <ProtectedRoute>
+                      <ValuationReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports/movement"
+                  element={
+                    <ProtectedRoute>
+                      <MovementReport />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports/custom"
+                  element={
+                    <ProtectedRoute>
+                      <CustomReport />
                     </ProtectedRoute>
                   }
                 />
