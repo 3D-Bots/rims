@@ -48,6 +48,21 @@ The main inventory view with powerful features:
 
 ![Item List](screenshots/03-item-list.png)
 
+### Search
+
+Quickly find items with instant search. Results filter as you type across name, description, part numbers, and more.
+
+![Item Search](screenshots/04-item-list-search.png)
+
+### Bulk Selection
+
+Select multiple items using checkboxes for batch operations:
+- Delete multiple items at once
+- Change category for selected items
+- Export selected items
+
+![Bulk Selection](screenshots/05-bulk-selection.png)
+
 ### New Item Form
 
 Create new inventory items with comprehensive fields:
