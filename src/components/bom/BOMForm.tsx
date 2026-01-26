@@ -7,6 +7,7 @@ import * as itemService from '../../services/itemService';
 import { BOMFormData, BOMItem } from '../../types/BOM';
 import { Item } from '../../types/Item';
 import { useAlert } from '../../contexts/AlertContext';
+import Breadcrumbs from '../common/Breadcrumbs';
 
 export default function BOMForm() {
   const { id } = useParams<{ id: string }>();
@@ -147,11 +148,24 @@ export default function BOMForm() {
     (item) => !formData.items.some((bi) => bi.itemId === item.id)
   );
 
+  const breadcrumbItems = isEditing
+    ? [
+        { label: 'Bill of Materials', path: '/bom' },
+        { label: formData.name || 'Edit BOM', path: `/bom/${id}` },
+        { label: 'Edit' },
+      ]
+    : [
+        { label: 'Bill of Materials', path: '/bom' },
+        { label: 'New BOM' },
+      ];
+
   return (
-    <Card>
-      <Card.Header>
-        <h4 className="mb-0">{isEditing ? 'Edit BOM' : 'New BOM'}</h4>
-      </Card.Header>
+    <>
+      <Breadcrumbs items={breadcrumbItems} />
+      <Card>
+        <Card.Header>
+          <h4 className="mb-0">{isEditing ? 'Edit BOM' : 'New BOM'}</h4>
+        </Card.Header>
       <Card.Body>
         <Form onSubmit={handleSubmit}>
           <Row className="mb-3">
@@ -266,8 +280,9 @@ export default function BOMForm() {
                         variant="outline-danger"
                         size="sm"
                         onClick={() => handleRemoveItem(bomItem.itemId)}
+                        aria-label={`Remove ${getItemName(bomItem.itemId)}`}
                       >
-                        <FaTrash />
+                        <FaTrash aria-hidden="true" />
                       </Button>
                     </td>
                   </tr>
@@ -295,12 +310,13 @@ export default function BOMForm() {
             <Button variant="primary" type="submit">
               {isEditing ? 'Update BOM' : 'Create BOM'}
             </Button>
-            <Button variant="danger" onClick={() => navigate('/bom')}>
+            <Button variant="secondary" onClick={() => navigate('/bom')}>
               Cancel
             </Button>
           </ButtonGroup>
         </Form>
       </Card.Body>
-    </Card>
+      </Card>
+    </>
   );
 }

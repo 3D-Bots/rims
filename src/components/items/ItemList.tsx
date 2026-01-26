@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Table, Button, Form, ButtonGroup } from 'react-bootstrap';
-import { FaEdit, FaTrash, FaFileExcel, FaFilePdf } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaFileExcel, FaFilePdf, FaBoxOpen } from 'react-icons/fa';
 import * as itemService from '../../services/itemService';
 import { Item } from '../../types/Item';
 import { useAlert } from '../../contexts/AlertContext';
@@ -10,6 +10,7 @@ import ConfirmModal from '../common/ConfirmModal';
 import ItemFilters from './ItemFilters';
 import BulkActions from './BulkActions';
 import LowStockAlert from '../common/LowStockAlert';
+import EmptyState from '../common/EmptyState';
 import { exportToCSV, exportToPDF } from '../../utils/export';
 import { formatCurrency } from '../../utils/formatters';
 import { ITEMS_PER_PAGE, LOW_STOCK_THRESHOLD } from '../../constants/config';
@@ -338,15 +339,20 @@ export default function ItemList() {
                 <td className="text-center">{item.location}</td>
                 <td className="text-center">{item.category}</td>
                 <td className="text-center">
-                  <Link to={`/items/${item.id}/edit`} className="btn btn-sm btn-outline-primary me-1">
-                    <FaEdit />
+                  <Link
+                    to={`/items/${item.id}/edit`}
+                    className="btn btn-sm btn-outline-primary me-1"
+                    aria-label={`Edit ${item.name}`}
+                  >
+                    <FaEdit aria-hidden="true" />
                   </Link>
                   <Button
                     variant="outline-danger"
                     size="sm"
                     onClick={() => setDeleteModalItem(item)}
+                    aria-label={`Delete ${item.name}`}
                   >
-                    <FaTrash />
+                    <FaTrash aria-hidden="true" />
                   </Button>
                 </td>
               </tr>
@@ -364,13 +370,31 @@ export default function ItemList() {
           </tfoot>
         </Table>
 
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          totalItems={filteredItems.length}
-          itemsPerPage={ITEMS_PER_PAGE}
-        />
+        {items.length === 0 ? (
+          <EmptyState
+            icon={FaBoxOpen}
+            title="No items in inventory"
+            description="Get started by adding your first inventory item."
+            actionLabel="Add First Item"
+            actionPath="/items/new"
+          />
+        ) : filteredItems.length === 0 ? (
+          <EmptyState
+            icon={FaBoxOpen}
+            title="No items match your filters"
+            description="Try adjusting your search or filter criteria."
+            actionLabel="Clear Filters"
+            onAction={handleResetFilters}
+          />
+        ) : (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredItems.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
+        )}
       </Card.Body>
 
       <ConfirmModal
