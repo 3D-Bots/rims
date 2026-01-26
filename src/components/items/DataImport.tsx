@@ -2,7 +2,7 @@ import { useState, useRef, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Form, Button, Table, Alert, Row, Col, Badge } from 'react-bootstrap';
 import { FaFileUpload, FaCheck, FaTimes, FaDownload } from 'react-icons/fa';
-import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import * as itemService from '../../services/itemService';
 import { ItemFormData, CATEGORIES } from '../../types/Item';
 import { useAlert } from '../../contexts/AlertContext';
@@ -115,15 +115,16 @@ export default function DataImport() {
   };
 
   const parseFile = (file: File) => {
-    const reader = new FileReader();
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          showError('Error parsing CSV file: ' + results.errors[0].message);
+          return;
+        }
 
-    reader.onload = (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
+        const jsonData = results.data as Record<string, unknown>[];
 
         if (jsonData.length === 0) {
           showError('No data found in file');
@@ -146,12 +147,11 @@ export default function DataImport() {
 
         setImportData(mappedData);
         setFileName(file.name);
-      } catch {
-        showError('Failed to parse file. Please ensure it is a valid CSV or Excel file.');
-      }
-    };
-
-    reader.readAsBinaryString(file);
+      },
+      error: () => {
+        showError('Failed to parse file. Please ensure it is a valid CSV file.');
+      },
+    });
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -205,27 +205,47 @@ export default function DataImport() {
   };
 
   const downloadTemplate = () => {
-    const template = [
-      {
-        name: 'Example Item',
-        description: 'Item description',
-        productModelNumber: 'MODEL-001',
-        vendorPartNumber: 'VP-001',
-        vendorName: 'Vendor Name',
-        quantity: 10,
-        unitValue: 9.99,
-        vendorUrl: 'https://example.com',
-        category: CATEGORIES[0],
-        location: 'A1B2',
-        barcode: 'RIMS-0001',
-        reorderPoint: 5,
-      },
+    const headers = [
+      'name',
+      'description',
+      'productModelNumber',
+      'vendorPartNumber',
+      'vendorName',
+      'quantity',
+      'unitValue',
+      'vendorUrl',
+      'category',
+      'location',
+      'barcode',
+      'reorderPoint',
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(template);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Items');
-    XLSX.writeFile(workbook, 'rims-import-template.xlsx');
+    const exampleRow = [
+      'Example Item',
+      'Item description',
+      'MODEL-001',
+      'VP-001',
+      'Vendor Name',
+      '10',
+      '9.99',
+      'https://example.com',
+      CATEGORIES[0],
+      'A1B2',
+      'RIMS-0001',
+      '5',
+    ];
+
+    const csv = Papa.unparse({
+      fields: headers,
+      data: [exampleRow],
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'rims-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
   const validCount = importData.filter((row) => row.valid).length;
@@ -241,7 +261,7 @@ export default function DataImport() {
       </Card.Header>
       <Card.Body>
         <Alert variant="info">
-          <strong>Supported formats:</strong> CSV, Excel (.xlsx, .xls)
+          <strong>Supported format:</strong> CSV
           <br />
           <small>
             Columns are auto-detected. Required: name. Optional: description, quantity,
@@ -255,7 +275,7 @@ export default function DataImport() {
           <Form.Control
             ref={fileInputRef}
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv"
             onChange={handleFileChange}
           />
         </Form.Group>
