@@ -6,6 +6,8 @@ import * as bomService from '../../services/bomService';
 import { BOM, BOMCostBreakdown } from '../../types/BOM';
 import { useAlert } from '../../contexts/AlertContext';
 import ConfirmModal from '../common/ConfirmModal';
+import Breadcrumbs from '../common/Breadcrumbs';
+import { SkeletonDetailPage } from '../common/Skeleton';
 
 export default function BOMDetail() {
   const { id } = useParams<{ id: string }>();
@@ -56,13 +58,20 @@ export default function BOMDetail() {
   };
 
   if (!bom || !breakdown) {
-    return <div>Loading...</div>;
+    return <SkeletonDetailPage />;
   }
 
   const availability = bomService.checkAvailability(bom.id);
 
+  const breadcrumbItems = [
+    { label: 'Bill of Materials', path: '/bom' },
+    { label: bom.name },
+  ];
+
   return (
-    <Card>
+    <>
+      <Breadcrumbs items={breadcrumbItems} />
+      <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
         <h4 className="mb-0">{bom.name}</h4>
         <Badge bg={availability.canBuild ? 'success' : 'warning'}>
@@ -178,28 +187,29 @@ export default function BOMDetail() {
 
         <ButtonGroup>
           <Link to={`/bom/${bom.id}/edit`} className="btn btn-primary">
-            <FaEdit className="me-1" /> Edit
+            <FaEdit className="me-1" aria-hidden="true" /> Edit
           </Link>
-          <Button variant="secondary" onClick={handleDuplicate}>
-            <FaCopy className="me-1" /> Duplicate
+          <Button variant="secondary" onClick={handleDuplicate} aria-label="Duplicate BOM">
+            <FaCopy className="me-1" aria-hidden="true" /> Duplicate
           </Button>
-          <Button variant="warning" onClick={() => setShowDeleteModal(true)}>
-            <FaTrash className="me-1" /> Delete
+          <Button variant="danger" onClick={() => setShowDeleteModal(true)} aria-label="Delete BOM">
+            <FaTrash className="me-1" aria-hidden="true" /> Delete
           </Button>
-          <Button variant="danger" onClick={() => navigate('/bom')}>
+          <Button variant="outline-secondary" onClick={() => navigate('/bom')}>
             Back to List
           </Button>
         </ButtonGroup>
       </Card.Body>
 
-      <ConfirmModal
-        show={showDeleteModal}
-        title="Delete BOM"
-        message={`Are you sure you want to delete "${bom.name}"?`}
-        confirmLabel="Delete"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDeleteModal(false)}
-      />
-    </Card>
+        <ConfirmModal
+          show={showDeleteModal}
+          title="Delete BOM"
+          message={`Are you sure you want to delete "${bom.name}"?`}
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      </Card>
+    </>
   );
 }

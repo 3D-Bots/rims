@@ -8,6 +8,8 @@ import { VendorPriceResult } from '../../types/Vendor';
 import { useAlert } from '../../contexts/AlertContext';
 import ConfirmModal from '../common/ConfirmModal';
 import CostHistoryChart from './CostHistoryChart';
+import Breadcrumbs from '../common/Breadcrumbs';
+import { SkeletonDetailPage } from '../common/Skeleton';
 
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
@@ -62,14 +64,21 @@ export default function ItemDetail() {
   };
 
   if (!item) {
-    return <div>Loading...</div>;
+    return <SkeletonDetailPage />;
   }
 
+  const breadcrumbItems = [
+    { label: 'Inventory', path: '/items' },
+    { label: item.name },
+  ];
+
   return (
-    <Card>
-      <Card.Header>
-        <h4 className="mb-0">{item.name}</h4>
-      </Card.Header>
+    <>
+      <Breadcrumbs items={breadcrumbItems} />
+      <Card>
+        <Card.Header>
+          <h4 className="mb-0">{item.name}</h4>
+        </Card.Header>
       <Card.Body>
         {item.picture && (
           <Row className="mb-4">
@@ -243,23 +252,24 @@ export default function ItemDetail() {
           <Link to={`/items/${item.id}/edit`} className="btn btn-primary">
             Edit
           </Link>
-          <Button variant="warning" onClick={() => setShowDeleteModal(true)}>
+          <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
             Delete
           </Button>
-          <Button variant="danger" onClick={() => navigate('/items')}>
-            Cancel
+          <Button variant="secondary" onClick={() => navigate('/items')}>
+            Back to List
           </Button>
         </ButtonGroup>
       </Card.Body>
 
-      <ConfirmModal
-        show={showDeleteModal}
-        title="Delete Item"
-        message={`Are you sure you want to delete "${item.name}"?`}
-        confirmLabel="Delete"
-        onConfirm={handleDelete}
-        onCancel={() => setShowDeleteModal(false)}
-      />
-    </Card>
+        <ConfirmModal
+          show={showDeleteModal}
+          title="Delete Item"
+          message={`Are you sure you want to delete "${item.name}"?`}
+          confirmLabel="Delete"
+          onConfirm={handleDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      </Card>
+    </>
   );
 }

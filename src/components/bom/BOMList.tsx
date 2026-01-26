@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Table, Button, Badge } from 'react-bootstrap';
-import { FaPlus, FaEye, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaEye, FaEdit, FaTrash, FaClipboardList } from 'react-icons/fa';
 import * as bomService from '../../services/bomService';
 import { BOM } from '../../types/BOM';
 import { useAlert } from '../../contexts/AlertContext';
 import ConfirmModal from '../common/ConfirmModal';
+import EmptyState from '../common/EmptyState';
 
 export default function BOMList() {
   const [boms, setBoms] = useState<BOM[]>([]);
@@ -56,9 +57,13 @@ export default function BOMList() {
       </Card.Header>
       <Card.Body>
         {boms.length === 0 ? (
-          <p className="text-muted text-center py-4">
-            No BOMs created yet. Create your first BOM to group items into projects.
-          </p>
+          <EmptyState
+            icon={FaClipboardList}
+            title="No BOMs created yet"
+            description="Create your first Bill of Materials to group items into projects."
+            actionLabel="Create First BOM"
+            actionPath="/bom/new"
+          />
         ) : (
           <Table striped hover responsive>
             <thead>
@@ -83,18 +88,27 @@ export default function BOMList() {
                   <td>{new Date(bom.createdAt).toLocaleDateString()}</td>
                   <td>
                     <div className="d-flex gap-1">
-                      <Link to={`/bom/${bom.id}`} className="btn btn-sm btn-outline-primary">
-                        <FaEye />
+                      <Link
+                        to={`/bom/${bom.id}`}
+                        className="btn btn-sm btn-outline-primary"
+                        aria-label={`View ${bom.name}`}
+                      >
+                        <FaEye aria-hidden="true" />
                       </Link>
-                      <Link to={`/bom/${bom.id}/edit`} className="btn btn-sm btn-outline-secondary">
-                        <FaEdit />
+                      <Link
+                        to={`/bom/${bom.id}/edit`}
+                        className="btn btn-sm btn-outline-secondary"
+                        aria-label={`Edit ${bom.name}`}
+                      >
+                        <FaEdit aria-hidden="true" />
                       </Link>
                       <Button
                         variant="outline-danger"
                         size="sm"
                         onClick={() => setDeleteTarget(bom)}
+                        aria-label={`Delete ${bom.name}`}
                       >
-                        <FaTrash />
+                        <FaTrash aria-hidden="true" />
                       </Button>
                     </div>
                   </td>
