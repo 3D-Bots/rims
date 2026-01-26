@@ -21,6 +21,10 @@ import Dashboard from './components/reports/Dashboard';
 import ValuationReport from './components/reports/ValuationReport';
 import MovementReport from './components/reports/MovementReport';
 import CustomReport from './components/reports/CustomReport';
+import ItemTemplates from './components/items/ItemTemplates';
+import BOMList from './components/bom/BOMList';
+import BOMForm from './components/bom/BOMForm';
+import BOMDetail from './components/bom/BOMDetail';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
@@ -105,6 +109,46 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <ReorderAlerts />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="items/templates"
+                  element={
+                    <ProtectedRoute>
+                      <ItemTemplates />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="bom"
+                  element={
+                    <ProtectedRoute>
+                      <BOMList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="bom/new"
+                  element={
+                    <ProtectedRoute>
+                      <BOMForm />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="bom/:id"
+                  element={
+                    <ProtectedRoute>
+                      <BOMDetail />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="bom/:id/edit"
+                  element={
+                    <ProtectedRoute>
+                      <BOMForm />
                     </ProtectedRoute>
                   }
                 />

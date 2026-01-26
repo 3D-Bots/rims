@@ -49,6 +49,10 @@ export default function Header() {
                   <NavDropdown.Item as={Link} to="/items/reorder">
                     Reorder Alerts
                   </NavDropdown.Item>
+                  <NavDropdown.Divider />
+                  <NavDropdown.Item as={Link} to="/items/templates">
+                    Item Templates
+                  </NavDropdown.Item>
                 </NavDropdown>
                 <NavDropdown title="Reports" id="reports-dropdown">
                   <NavDropdown.Item as={Link} to="/reports">
@@ -63,6 +67,14 @@ export default function Header() {
                   </NavDropdown.Item>
                   <NavDropdown.Item as={Link} to="/reports/custom">
                     Custom Report
+                  </NavDropdown.Item>
+                </NavDropdown>
+                <NavDropdown title="BOM" id="bom-dropdown">
+                  <NavDropdown.Item as={Link} to="/bom">
+                    All BOMs
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={Link} to="/bom/new">
+                    New BOM
                   </NavDropdown.Item>
                 </NavDropdown>
               </>

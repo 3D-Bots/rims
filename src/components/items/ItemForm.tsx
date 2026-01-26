@@ -1,9 +1,13 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, Form, Button, Row, Col, ButtonGroup } from 'react-bootstrap';
+import { Card, Form, Button, Row, Col, ButtonGroup, Spinner, Badge } from 'react-bootstrap';
 import * as itemService from '../../services/itemService';
+import * as itemTemplateService from '../../services/itemTemplateService';
+import * as vendorService from '../../services/vendorService';
 import { ItemFormData, CATEGORIES } from '../../types/Item';
+import { ItemTemplate } from '../../types/ItemTemplate';
 import { useAlert } from '../../contexts/AlertContext';
+import { compressImage, formatBytes, compressionPercent } from '../../utils/imageOptimizer';
 
 export default function ItemForm() {
   const { id } = useParams<{ id: string }>();
@@ -32,6 +36,14 @@ export default function ItemForm() {
   });
 
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [imageCompression, setImageCompression] = useState<{
+    originalSize: number;
+    compressedSize: number;
+    wasCompressed: boolean;
+  } | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [templates, setTemplates] = useState<ItemTemplate[]>([]);
+  const [isLookingUpPrice, setIsLookingUpPrice] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -62,6 +74,13 @@ export default function ItemForm() {
     }
   }, [id, navigate, showError]);
 
+  useEffect(() => {
+    // Load templates for new item form
+    if (!isEditing) {
+      setTemplates(itemTemplateService.getAllTemplates());
+    }
+  }, [isEditing]);
+
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData((prev) => ({
@@ -70,14 +89,31 @@ export default function ItemForm() {
     }));
   };
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsCompressing(true);
+      setImageCompression(null);
+
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64 = reader.result as string;
-        setFormData((prev) => ({ ...prev, picture: base64 }));
-        setPreviewImage(base64);
+        try {
+          const result = await compressImage(base64);
+          setFormData((prev) => ({ ...prev, picture: result.data }));
+          setPreviewImage(result.data);
+          setImageCompression({
+            originalSize: result.originalSize,
+            compressedSize: result.compressedSize,
+            wasCompressed: result.wasCompressed,
+          });
+        } catch {
+          // Fallback to original if compression fails
+          setFormData((prev) => ({ ...prev, picture: base64 }));
+          setPreviewImage(base64);
+        } finally {
+          setIsCompressing(false);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -86,6 +122,48 @@ export default function ItemForm() {
   const handleRemoveImage = () => {
     setFormData((prev) => ({ ...prev, picture: null }));
     setPreviewImage(null);
+    setImageCompression(null);
+  };
+
+  const handleTemplateSelect = (e: ChangeEvent<HTMLSelectElement>) => {
+    const templateId = e.target.value;
+    if (!templateId) return;
+
+    const template = itemTemplateService.getTemplateById(parseInt(templateId));
+    if (template) {
+      setFormData((prev) => ({
+        ...prev,
+        ...template.defaultFields,
+        category: template.category,
+      }));
+      showSuccess(`Template "${template.name}" applied.`);
+    }
+  };
+
+  const handleVendorLookup = async () => {
+    if (!formData.vendorName || !formData.vendorPartNumber) {
+      showError('Please enter vendor name and part number first.');
+      return;
+    }
+
+    setIsLookingUpPrice(true);
+    try {
+      const result = await vendorService.lookupPrice(formData.vendorName, formData.vendorPartNumber);
+      if (result) {
+        setFormData((prev) => ({
+          ...prev,
+          unitValue: result.price,
+          vendorUrl: result.vendorUrl || prev.vendorUrl,
+        }));
+        showSuccess(`Found price: $${result.price.toFixed(2)} (${result.inStock ? 'In Stock' : 'Out of Stock'})`);
+      } else {
+        showError('No pricing found for this part.');
+      }
+    } catch {
+      showError('Failed to look up vendor price.');
+    } finally {
+      setIsLookingUpPrice(false);
+    }
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -117,6 +195,22 @@ export default function ItemForm() {
       </Card.Header>
       <Card.Body>
         <Form onSubmit={handleSubmit}>
+          {!isEditing && templates.length > 0 && (
+            <Row className="mb-3">
+              <Form.Label column sm={3}>Use Template</Form.Label>
+              <Col sm={5}>
+                <Form.Select onChange={handleTemplateSelect} defaultValue="">
+                  <option value="">-- Select a template --</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} ({template.category})
+                    </option>
+                  ))}
+                </Form.Select>
+              </Col>
+            </Row>
+          )}
+
           <Row className="mb-3">
             <Form.Label column sm={3}>Name</Form.Label>
             <Col sm={5}>
@@ -170,12 +264,25 @@ export default function ItemForm() {
           <Row className="mb-3">
             <Form.Label column sm={3}>Vendor Part Number</Form.Label>
             <Col sm={5}>
-              <Form.Control
-                type="text"
-                name="vendorPartNumber"
-                value={formData.vendorPartNumber}
-                onChange={handleChange}
-              />
+              <div className="d-flex gap-2">
+                <Form.Control
+                  type="text"
+                  name="vendorPartNumber"
+                  value={formData.vendorPartNumber}
+                  onChange={handleChange}
+                />
+                <Button
+                  variant="outline-secondary"
+                  onClick={handleVendorLookup}
+                  disabled={isLookingUpPrice || !formData.vendorName || !formData.vendorPartNumber}
+                  title="Look up price from vendor"
+                >
+                  {isLookingUpPrice ? <Spinner size="sm" animation="border" /> : 'Lookup'}
+                </Button>
+              </div>
+              <Form.Text className="text-muted">
+                Enter vendor name and part number, then click Lookup for pricing
+              </Form.Text>
             </Col>
           </Row>
 
@@ -283,8 +390,15 @@ export default function ItemForm() {
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
+                disabled={isCompressing}
               />
-              {previewImage && (
+              {isCompressing && (
+                <div className="mt-2">
+                  <Spinner size="sm" animation="border" className="me-2" />
+                  Compressing image...
+                </div>
+              )}
+              {previewImage && !isCompressing && (
                 <div className="mt-2">
                   <img
                     src={previewImage}
@@ -300,6 +414,20 @@ export default function ItemForm() {
                   >
                     Remove
                   </Button>
+                  {imageCompression && (
+                    <div className="mt-1">
+                      {imageCompression.wasCompressed ? (
+                        <Badge bg="success">
+                          Compressed: {formatBytes(imageCompression.originalSize)} → {formatBytes(imageCompression.compressedSize)}
+                          ({compressionPercent(imageCompression.originalSize, imageCompression.compressedSize)}% saved)
+                        </Badge>
+                      ) : (
+                        <Badge bg="secondary">
+                          Size: {formatBytes(imageCompression.originalSize)} (no compression needed)
+                        </Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </Col>

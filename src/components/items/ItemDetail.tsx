@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Card, Row, Col, Button, ButtonGroup } from 'react-bootstrap';
+import { Card, Row, Col, Button, ButtonGroup, Spinner, Badge } from 'react-bootstrap';
 import * as itemService from '../../services/itemService';
+import * as vendorService from '../../services/vendorService';
 import { Item } from '../../types/Item';
+import { VendorPriceResult } from '../../types/Vendor';
 import { useAlert } from '../../contexts/AlertContext';
 import ConfirmModal from '../common/ConfirmModal';
+import CostHistoryChart from './CostHistoryChart';
 
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +15,8 @@ export default function ItemDetail() {
   const { showSuccess, showError } = useAlert();
   const [item, setItem] = useState<Item | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [vendorPrices, setVendorPrices] = useState<VendorPriceResult[]>([]);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -40,6 +45,20 @@ export default function ItemDetail() {
 
   const formatCurrency = (value: number) => {
     return `$${value.toFixed(2)}`;
+  };
+
+  const handleCompareVendorPrices = async () => {
+    if (!item?.vendorPartNumber) return;
+
+    setIsLoadingPrices(true);
+    try {
+      const prices = await vendorService.compareVendorPrices(item.vendorPartNumber);
+      setVendorPrices(prices);
+    } catch {
+      showError('Failed to fetch vendor prices.');
+    } finally {
+      setIsLoadingPrices(false);
+    }
   };
 
   if (!item) {
@@ -143,6 +162,80 @@ export default function ItemDetail() {
             )}
           </Col>
         </Row>
+
+        {/* Cost History Chart */}
+        <CostHistoryChart itemId={item.id} currentValue={item.unitValue} />
+
+        {/* Vendor Price Comparison */}
+        {item.vendorPartNumber && (
+          <Card className="mt-3">
+            <Card.Header className="d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">Vendor Price Comparison</h6>
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={handleCompareVendorPrices}
+                disabled={isLoadingPrices}
+              >
+                {isLoadingPrices ? (
+                  <>
+                    <Spinner size="sm" animation="border" className="me-1" />
+                    Loading...
+                  </>
+                ) : (
+                  'Compare Prices'
+                )}
+              </Button>
+            </Card.Header>
+            {vendorPrices.length > 0 && (
+              <Card.Body>
+                <div className="table-responsive">
+                  <table className="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>Vendor</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>vs. Current</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vendorPrices.map((vp, i) => {
+                        const diff = vp.price - item.unitValue;
+                        return (
+                          <tr key={i}>
+                            <td>
+                              {vp.vendorUrl ? (
+                                <a href={vp.vendorUrl} target="_blank" rel="noopener noreferrer">
+                                  {vp.vendor}
+                                </a>
+                              ) : (
+                                vp.vendor
+                              )}
+                            </td>
+                            <td>{formatCurrency(vp.price)}</td>
+                            <td>
+                              {vp.inStock ? (
+                                <Badge bg="success">{vp.stockQuantity} in stock</Badge>
+                              ) : (
+                                <Badge bg="danger">Out of Stock</Badge>
+                              )}
+                            </td>
+                            <td>
+                              <Badge bg={diff < 0 ? 'success' : diff > 0 ? 'danger' : 'secondary'}>
+                                {diff > 0 ? '+' : ''}{formatCurrency(diff)}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card.Body>
+            )}
+          </Card>
+        )}
 
         <hr />
 

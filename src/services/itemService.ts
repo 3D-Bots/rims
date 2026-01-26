@@ -1,6 +1,7 @@
 import { Item, ItemFormData } from '../types/Item';
 import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storage';
 import * as stockHistoryService from './stockHistoryService';
+import * as costHistoryService from './costHistoryService';
 
 function getItems(): Item[] {
   return getFromStorage<Item[]>(STORAGE_KEYS.ITEMS) || [];
@@ -34,7 +35,7 @@ export function createItem(data: ItemFormData): Item {
   return newItem;
 }
 
-export function updateItem(id: number, data: Partial<ItemFormData>): Item | null {
+export function updateItem(id: number, data: Partial<ItemFormData>, costSource?: 'manual' | 'vendor_lookup' | 'import'): Item | null {
   const items = getItems();
   const itemIndex = items.findIndex((item) => item.id === id);
 
@@ -58,6 +59,12 @@ export function updateItem(id: number, data: Partial<ItemFormData>): Item | null
   saveItems(updatedItems);
 
   stockHistoryService.recordItemUpdated(existingItem, updatedItem);
+
+  // Record cost change if unitValue changed
+  if (existingItem.unitValue !== unitValue) {
+    costHistoryService.recordCostChange(id, existingItem.unitValue, unitValue, costSource || 'manual');
+  }
+
   return updatedItem;
 }
 

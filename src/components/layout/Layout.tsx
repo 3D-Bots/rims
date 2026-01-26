@@ -3,8 +3,13 @@ import { Container } from 'react-bootstrap';
 import Header from './Header';
 import Footer from './Footer';
 import AlertDisplay from '../common/AlertDisplay';
+import ShortcutHelp from '../common/ShortcutHelp';
+import { useKeyboardShortcuts, useShortcutHelp } from '../../hooks/useKeyboardShortcuts';
 
 export default function Layout() {
+  const { showHelp, openHelp, closeHelp } = useShortcutHelp();
+  useKeyboardShortcuts(openHelp);
+
   return (
     <div className="d-flex flex-column min-vh-100">
       <Header />
@@ -13,6 +18,7 @@ export default function Layout() {
         <Outlet />
       </Container>
       <Footer />
+      <ShortcutHelp show={showHelp} onClose={closeHelp} />
     </div>
   );
 }
