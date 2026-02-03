@@ -1,13 +1,5 @@
 import { CostHistoryEntry, CostStats } from '../types/CostHistory';
-import { getFromStorage, saveToStorage, STORAGE_KEYS } from './storage';
-
-function getCostHistory(): CostHistoryEntry[] {
-  return getFromStorage<CostHistoryEntry[]>(STORAGE_KEYS.COST_HISTORY) || [];
-}
-
-function saveCostHistory(history: CostHistoryEntry[]): void {
-  saveToStorage(STORAGE_KEYS.COST_HISTORY, history);
-}
+import { costHistoryRepository } from './db/repositories';
 
 export function recordCostChange(
   itemId: number,
@@ -20,25 +12,19 @@ export function recordCostChange(
     return null;
   }
 
-  const history = getCostHistory();
-  const newEntry: CostHistoryEntry = {
-    id: Math.max(0, ...history.map((h) => h.id)) + 1,
+  const newEntry = costHistoryRepository.create({
     itemId,
     oldValue,
     newValue,
     source,
     timestamp: new Date().toISOString(),
-  };
+  });
 
-  saveCostHistory([...history, newEntry]);
   return newEntry;
 }
 
 export function getCostHistoryForItem(itemId: number): CostHistoryEntry[] {
-  const history = getCostHistory();
-  return history
-    .filter((h) => h.itemId === itemId)
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  return costHistoryRepository.findByItemId(itemId);
 }
 
 export function getCostStats(itemId: number, currentValue: number): CostStats {
@@ -59,7 +45,6 @@ export function getCostStats(itemId: number, currentValue: number): CostStats {
 
   // Get all unique values (including current)
   const allValues = [...history.map((h) => h.newValue), currentValue];
-  const uniqueValues = [...new Set(allValues)];
 
   const min = Math.min(...allValues);
   const max = Math.max(...allValues);
@@ -88,13 +73,9 @@ export function getCostStats(itemId: number, currentValue: number): CostStats {
 }
 
 export function deleteCostHistoryForItem(itemId: number): number {
-  const history = getCostHistory();
-  const filtered = history.filter((h) => h.itemId !== itemId);
-  const deletedCount = history.length - filtered.length;
-  saveCostHistory(filtered);
-  return deletedCount;
+  return costHistoryRepository.deleteByItemId(itemId);
 }
 
 export function getAllCostHistory(): CostHistoryEntry[] {
-  return getCostHistory();
+  return costHistoryRepository.getAll();
 }

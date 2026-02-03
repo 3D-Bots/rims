@@ -1,106 +1,81 @@
 import { Item, ItemFormData } from '../types/Item';
-import { STORAGE_KEYS, getFromStorage, saveToStorage } from './storage';
+import { itemRepository } from './db/repositories';
 import * as stockHistoryService from './stockHistoryService';
 import * as costHistoryService from './costHistoryService';
 
-function getItems(): Item[] {
-  return getFromStorage<Item[]>(STORAGE_KEYS.ITEMS) || [];
-}
-
-function saveItems(items: Item[]): void {
-  saveToStorage(STORAGE_KEYS.ITEMS, items);
-}
-
 export function getAllItems(): Item[] {
-  return getItems();
+  return itemRepository.getAll();
 }
 
 export function getItemById(id: number): Item | null {
-  const items = getItems();
-  return items.find((item) => item.id === id) || null;
+  return itemRepository.getById(id);
 }
 
 export function createItem(data: ItemFormData): Item {
-  const items = getItems();
-  const newItem: Item = {
+  const newItem = itemRepository.createWithValue({
     ...data,
-    id: Math.max(0, ...items.map((i) => i.id)) + 1,
-    value: data.quantity * data.unitValue,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  });
 
-  saveItems([...items, newItem]);
   stockHistoryService.recordItemCreated(newItem);
   return newItem;
 }
 
 export function updateItem(id: number, data: Partial<ItemFormData>, costSource?: 'manual' | 'vendor_lookup' | 'import'): Item | null {
-  const items = getItems();
-  const itemIndex = items.findIndex((item) => item.id === id);
-
-  if (itemIndex === -1) {
+  const existingItem = itemRepository.getById(id);
+  if (!existingItem) {
     return null;
   }
 
-  const existingItem = items[itemIndex];
-  const quantity = data.quantity ?? existingItem.quantity;
-  const unitValue = data.unitValue ?? existingItem.unitValue;
+  const updatedItem = itemRepository.updateWithValue(
+    id,
+    data,
+    new Date().toISOString()
+  );
 
-  const updatedItem: Item = {
-    ...existingItem,
-    ...data,
-    value: quantity * unitValue,
-    updatedAt: new Date().toISOString(),
-  };
-
-  const updatedItems = [...items];
-  updatedItems[itemIndex] = updatedItem;
-  saveItems(updatedItems);
+  if (!updatedItem) {
+    return null;
+  }
 
   stockHistoryService.recordItemUpdated(existingItem, updatedItem);
 
   // Record cost change if unitValue changed
-  if (existingItem.unitValue !== unitValue) {
-    costHistoryService.recordCostChange(id, existingItem.unitValue, unitValue, costSource || 'manual');
+  const newUnitValue = data.unitValue ?? existingItem.unitValue;
+  if (existingItem.unitValue !== newUnitValue) {
+    costHistoryService.recordCostChange(id, existingItem.unitValue, newUnitValue, costSource || 'manual');
   }
 
   return updatedItem;
 }
 
 export function deleteItem(id: number): boolean {
-  const items = getItems();
-  const itemToDelete = items.find((item) => item.id === id);
-  const updatedItems = items.filter((item) => item.id !== id);
-
-  if (updatedItems.length === items.length) {
+  const itemToDelete = itemRepository.getById(id);
+  if (!itemToDelete) {
     return false;
   }
 
-  saveItems(updatedItems);
-  if (itemToDelete) {
+  const result = itemRepository.delete(id);
+  if (result) {
     stockHistoryService.recordItemDeleted(itemToDelete);
   }
-  return true;
+  return result;
 }
 
 export function getTotalQuantity(): number {
-  const items = getItems();
-  return items.reduce((sum, item) => sum + item.quantity, 0);
+  return itemRepository.getTotalQuantity();
 }
 
 export function getTotalValue(): number {
-  const items = getItems();
-  return items.reduce((sum, item) => sum + item.value, 0);
+  return itemRepository.getTotalValue();
 }
 
 export function deleteItems(ids: number[]): number {
-  const items = getItems();
-  const idsSet = new Set(ids);
-  const itemsToDelete = items.filter((item) => idsSet.has(item.id));
-  const updatedItems = items.filter((item) => !idsSet.has(item.id));
-  const deletedCount = items.length - updatedItems.length;
-  saveItems(updatedItems);
+  const itemsToDelete = ids
+    .map((id) => itemRepository.getById(id))
+    .filter((item): item is Item => item !== null);
+
+  const deletedCount = itemRepository.deleteMany(ids);
 
   itemsToDelete.forEach((item) => {
     stockHistoryService.recordItemDeleted(item);
@@ -110,38 +85,32 @@ export function deleteItems(ids: number[]): number {
 }
 
 export function updateItemsCategory(ids: number[], category: string): number {
-  const items = getItems();
-  const idsSet = new Set(ids);
-  let updatedCount = 0;
   const oldCategories = new Map<number, string>();
 
-  const updatedItems = items.map((item) => {
-    if (idsSet.has(item.id)) {
-      updatedCount++;
-      oldCategories.set(item.id, item.category);
-      return {
-        ...item,
-        category,
-        updatedAt: new Date().toISOString(),
-      };
+  // Get existing categories before update
+  ids.forEach((id) => {
+    const item = itemRepository.getById(id);
+    if (item) {
+      oldCategories.set(id, item.category);
     }
-    return item;
   });
 
-  saveItems(updatedItems);
+  const updatedCount = itemRepository.updateCategoryBulk(ids, category, new Date().toISOString());
 
-  const affectedItems = updatedItems.filter((item) => idsSet.has(item.id));
+  // Get updated items for history
+  const affectedItems = ids
+    .map((id) => itemRepository.getById(id))
+    .filter((item): item is Item => item !== null);
+
   stockHistoryService.recordBulkCategoryChange(affectedItems, oldCategories, category);
 
   return updatedCount;
 }
 
 export function getLowStockItems(threshold: number): Item[] {
-  const items = getItems();
-  return items.filter((item) => item.quantity <= threshold);
+  return itemRepository.getLowStock(threshold);
 }
 
 export function getItemsNeedingReorder(): Item[] {
-  const items = getItems();
-  return items.filter((item) => item.reorderPoint > 0 && item.quantity <= item.reorderPoint);
+  return itemRepository.getItemsNeedingReorder();
 }

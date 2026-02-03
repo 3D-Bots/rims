@@ -1,15 +1,7 @@
-import { VendorPriceResult, VendorPriceCache, SUPPORTED_VENDORS } from '../types/Vendor';
-import { getFromStorage, saveToStorage, STORAGE_KEYS } from './storage';
+import { VendorPriceResult, SUPPORTED_VENDORS } from '../types/Vendor';
+import { vendorPriceCacheRepository } from './db/repositories';
 
 const CACHE_DURATION_MS = 15 * 60 * 1000; // 15 minutes
-
-function getPriceCache(): VendorPriceCache {
-  return getFromStorage<VendorPriceCache>(STORAGE_KEYS.VENDOR_PRICE_CACHE) || {};
-}
-
-function savePriceCache(cache: VendorPriceCache): void {
-  saveToStorage(STORAGE_KEYS.VENDOR_PRICE_CACHE, cache);
-}
 
 function getCacheKey(vendor: string, partNumber: string): string {
   return `${vendor.toLowerCase()}-${partNumber.toLowerCase()}`;
@@ -56,11 +48,11 @@ function mockPriceLookup(vendor: string, partNumber: string): VendorPriceResult 
  */
 export async function lookupPrice(vendor: string, partNumber: string): Promise<VendorPriceResult | null> {
   const cacheKey = getCacheKey(vendor, partNumber);
-  const cache = getPriceCache();
 
   // Check cache first
-  if (cache[cacheKey] && isCacheValid(cache[cacheKey])) {
-    return cache[cacheKey];
+  const cached = vendorPriceCacheRepository.findByCacheKey(cacheKey);
+  if (cached && isCacheValid(cached)) {
+    return cached;
   }
 
   // Simulate network delay
@@ -70,8 +62,7 @@ export async function lookupPrice(vendor: string, partNumber: string): Promise<V
 
   if (result) {
     // Update cache
-    cache[cacheKey] = result;
-    savePriceCache(cache);
+    vendorPriceCacheRepository.upsert(cacheKey, result);
   }
 
   return result;
@@ -98,7 +89,7 @@ export async function compareVendorPrices(partNumber: string): Promise<VendorPri
  * Clear the price cache
  */
 export function clearPriceCache(): void {
-  savePriceCache({});
+  vendorPriceCacheRepository.clearAll();
 }
 
 /**
