@@ -3,6 +3,7 @@
 Create a new branch, commit changes, and submit a pull request.
 
 ## Behavior
+
 - Creates a new branch based on current changes
 - Formats modified files using Biome
 - Analyzes changes and automatically splits into logical commits when appropriate
@@ -10,8 +11,12 @@ Create a new branch, commit changes, and submit a pull request.
 - Creates descriptive commit messages for each logical unit
 - Pushes branch to remote
 - Creates pull request with proper summary and test plan
+- Commits should never include "Co-Authored-By: Claude Opus 4.5
+  <noreply@anthropic.com>"
+- PR's should never include "🤖 Generated with Claude Code"
 
 ## Guidelines for Automatic Commit Splitting
+
 - Split commits by feature, component, or concern
 - Keep related file changes together in the same commit
 - Separate refactoring from feature additions
