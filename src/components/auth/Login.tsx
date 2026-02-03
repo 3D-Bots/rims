@@ -1,23 +1,27 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Card, Form, Button, Row, Col } from 'react-bootstrap';
+import { Card, Form, Button, Row, Col, Alert } from 'react-bootstrap';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAlert } from '../../contexts/AlertContext';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showVerificationError, setShowVerificationError] = useState(false);
   const { login } = useAuth();
   const { showSuccess, showError } = useAlert();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    setShowVerificationError(false);
 
-    const user = login({ email, password });
-    if (user) {
+    const result = await login({ email, password });
+    if (result.user) {
       showSuccess('Signed in successfully.');
       navigate('/items');
+    } else if (result.error === 'email_not_verified') {
+      setShowVerificationError(true);
     } else {
       showError('Invalid email or password.');
     }
@@ -31,6 +35,20 @@ export default function Login() {
             <h4 className="mb-0">Sign In</h4>
           </Card.Header>
           <Card.Body>
+            {showVerificationError && (
+              <Alert variant="warning">
+                <Alert.Heading>Email Not Verified</Alert.Heading>
+                <p>
+                  Your email address has not been verified yet. Please check your inbox for a verification email.
+                </p>
+                <hr />
+                <p className="mb-0">
+                  <Link to={`/resend-verification?email=${encodeURIComponent(email)}`}>
+                    Resend verification email
+                  </Link>
+                </p>
+              </Alert>
+            )}
             <Form onSubmit={handleSubmit}>
               <Form.Group className="mb-3" controlId="email">
                 <Form.Label>Email</Form.Label>

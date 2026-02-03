@@ -72,10 +72,11 @@ export function migrateFromLocalStorage(): {
     for (const user of users) {
       try {
         // Insert with explicit ID to preserve existing IDs
+        // Mark existing users as email verified
         const db = getDatabaseOrThrow();
         db.run(
-          `INSERT INTO users (id, email, password, role, sign_in_count, last_sign_in_at, last_sign_in_ip, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO users (id, email, password, role, sign_in_count, last_sign_in_at, last_sign_in_ip, email_verified, email_verification_token, email_verification_token_expires_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             user.id,
             user.email,
@@ -84,6 +85,9 @@ export function migrateFromLocalStorage(): {
             user.signInCount,
             user.lastSignInAt,
             user.lastSignInIp,
+            1, // Mark existing users as verified
+            null,
+            null,
             user.createdAt,
             user.updatedAt,
           ]

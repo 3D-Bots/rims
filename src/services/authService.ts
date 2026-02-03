@@ -7,11 +7,24 @@ function stripPassword(user: User): UserWithoutPassword {
   return userWithoutPassword;
 }
 
-export function login(credentials: LoginCredentials): UserWithoutPassword | null {
+export interface LoginResult {
+  user: UserWithoutPassword | null;
+  error?: 'invalid_credentials' | 'email_not_verified';
+}
+
+export async function login(credentials: LoginCredentials): Promise<LoginResult> {
+  // Always try to sync from server to get latest role/status
+  await syncUserFromServer(credentials.email, credentials.password);
+
   const user = userRepository.findByEmail(credentials.email);
 
   if (!user || user.password !== credentials.password) {
-    return null;
+    return { user: null, error: 'invalid_credentials' };
+  }
+
+  // Check if email is verified
+  if (!user.emailVerified) {
+    return { user: null, error: 'email_not_verified' };
   }
 
   // Update sign-in tracking
@@ -23,12 +36,62 @@ export function login(credentials: LoginCredentials): UserWithoutPassword | null
   });
 
   if (!updatedUser) {
-    return null;
+    return { user: null, error: 'invalid_credentials' };
   }
 
   const userWithoutPassword = stripPassword(updatedUser);
   saveToStorage(STORAGE_KEYS.CURRENT_USER, userWithoutPassword);
-  return userWithoutPassword;
+  return { user: userWithoutPassword };
+}
+
+async function syncUserFromServer(email: string, password: string): Promise<boolean> {
+  try {
+    const response = await fetch('/api/auth/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    if (result.user) {
+      const existingUser = userRepository.findByEmail(result.user.email);
+      if (existingUser) {
+        // Update existing user's role and verification status
+        userRepository.updateRole(existingUser.id, result.user.role, new Date().toISOString());
+        if (result.user.emailVerified && !existingUser.emailVerified) {
+          userRepository.markEmailVerified(existingUser.id);
+        }
+      } else {
+        // Create new user
+        userRepository.create({
+          email: result.user.email,
+          password: result.user.password,
+          role: result.user.role || 'user',
+          signInCount: 0,
+          lastSignInAt: null,
+          lastSignInIp: null,
+          emailVerified: result.user.emailVerified,
+          emailVerificationToken: null,
+          emailVerificationTokenExpiresAt: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return true;
+    }
+  } catch (error) {
+    console.error('Failed to sync user from server:', error);
+  }
+  return false;
+}
+
+export function isEmailVerified(email: string): boolean {
+  const user = userRepository.findByEmail(email);
+  return user?.emailVerified ?? false;
 }
 
 export function logout(): void {
@@ -39,7 +102,13 @@ export function getCurrentUser(): UserWithoutPassword | null {
   return getFromStorage<UserWithoutPassword>(STORAGE_KEYS.CURRENT_USER);
 }
 
-export function register(data: RegisterData): UserWithoutPassword | null {
+export interface RegisterResult {
+  success: boolean;
+  message: string;
+  userId?: number;
+}
+
+export async function register(data: RegisterData): Promise<RegisterResult> {
   if (data.password !== data.passwordConfirmation) {
     throw new Error('Password confirmation does not match');
   }
@@ -48,25 +117,90 @@ export function register(data: RegisterData): UserWithoutPassword | null {
     throw new Error('Password must be at least 8 characters');
   }
 
-  const existingUser = userRepository.findByEmail(data.email);
-  if (existingUser) {
-    throw new Error('Email has already been taken');
-  }
-
-  const newUser = userRepository.create({
-    email: data.email,
-    password: data.password,
-    role: 'user',
-    signInCount: 1,
-    lastSignInAt: new Date().toISOString(),
-    lastSignInIp: '127.0.0.1',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+  const response = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
   });
 
-  const userWithoutPassword = stripPassword(newUser);
-  saveToStorage(STORAGE_KEYS.CURRENT_USER, userWithoutPassword);
-  return userWithoutPassword;
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Registration failed');
+  }
+
+  return {
+    success: true,
+    message: result.message,
+    userId: result.userId,
+  };
+}
+
+export async function resendVerificationEmail(email: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch('/api/auth/resend-verification', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to resend verification email');
+  }
+
+  return {
+    success: true,
+    message: result.message,
+  };
+}
+
+export async function verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
+  const response = await fetch('/api/auth/verify-email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ token }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Email verification failed');
+  }
+
+  // Sync user to frontend database if user data is returned
+  if (result.user) {
+    const existingUser = userRepository.findByEmail(result.user.email);
+    if (!existingUser) {
+      userRepository.create({
+        email: result.user.email,
+        password: result.user.password,
+        role: result.user.role || 'user',
+        signInCount: 0,
+        lastSignInAt: null,
+        lastSignInIp: null,
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationTokenExpiresAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    } else if (!existingUser.emailVerified) {
+      // Update existing user to verified
+      userRepository.markEmailVerified(existingUser.id);
+    }
+  }
+
+  return {
+    success: true,
+    message: result.message,
+  };
 }
 
 export function updateProfile(

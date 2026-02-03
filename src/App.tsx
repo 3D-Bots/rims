@@ -25,6 +25,8 @@ import ItemTemplates from './components/items/ItemTemplates';
 import BOMList from './components/bom/BOMList';
 import BOMForm from './components/bom/BOMForm';
 import BOMDetail from './components/bom/BOMDetail';
+import VerifyEmail from './pages/VerifyEmail';
+import ResendVerification from './components/auth/ResendVerification';
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './index.css';
@@ -40,6 +42,8 @@ function App() {
                 <Route index element={<Welcome />} />
                 <Route path="login" element={<Login />} />
                 <Route path="register" element={<Register />} />
+                <Route path="verify-email" element={<VerifyEmail />} />
+                <Route path="resend-verification" element={<ResendVerification />} />
                 <Route
                   path="profile"
                   element={

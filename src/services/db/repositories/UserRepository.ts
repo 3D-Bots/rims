@@ -90,6 +90,53 @@ export class UserRepository extends BaseRepository<User> {
     );
     return rows.length > 0;
   }
+
+  /**
+   * Find a user by email verification token
+   */
+  findByVerificationToken(token: string): User | null {
+    const rows = execQuery<Record<string, unknown>>(
+      `SELECT * FROM ${this.tableName} WHERE email_verification_token = ?`,
+      [token]
+    );
+    if (rows.length === 0) {
+      return null;
+    }
+    return mapRowToEntity<User>(rows[0]);
+  }
+
+  /**
+   * Mark a user's email as verified
+   */
+  markEmailVerified(userId: number): User | null {
+    const updatedAt = new Date().toISOString();
+    execStatement(
+      `UPDATE ${this.tableName} SET
+        email_verified = 1,
+        email_verification_token = NULL,
+        email_verification_token_expires_at = NULL,
+        updated_at = ?
+      WHERE id = ?`,
+      [updatedAt, userId]
+    );
+    return this.getById(userId);
+  }
+
+  /**
+   * Set verification token for a user
+   */
+  setVerificationToken(userId: number, token: string, expiresAt: string): User | null {
+    const updatedAt = new Date().toISOString();
+    execStatement(
+      `UPDATE ${this.tableName} SET
+        email_verification_token = ?,
+        email_verification_token_expires_at = ?,
+        updated_at = ?
+      WHERE id = ?`,
+      [token, expiresAt, updatedAt, userId]
+    );
+    return this.getById(userId);
+  }
 }
 
 // Singleton instance

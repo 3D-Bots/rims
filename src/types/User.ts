@@ -8,6 +8,9 @@ export interface User {
   signInCount: number;
   lastSignInAt: string | null;
   lastSignInIp: string | null;
+  emailVerified: boolean;
+  emailVerificationToken: string | null;
+  emailVerificationTokenExpiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
