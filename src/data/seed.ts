@@ -1,10 +1,11 @@
 import { User } from '../types/User';
 import { Item } from '../types/Item';
-import { STORAGE_KEYS, saveToStorage, isInitialized, setInitialized } from '../services/storage';
+import { initializeDatabase, isDatabaseInitialized } from '../services/db/db';
+import { hasExistingLocalStorageData, migrateFromLocalStorage, verifyMigration } from '../services/db/migration';
+import { userRepository, itemRepository } from '../services/db/repositories';
 
-const seedUsers: User[] = [
+const seedUsers: Omit<User, 'id'>[] = [
   {
-    id: 1,
     email: 'admin@example.com',
     password: 'changeme',
     role: 'admin',
@@ -15,7 +16,6 @@ const seedUsers: User[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 2,
     email: 'user@example.com',
     password: 'changeme',
     role: 'user',
@@ -27,9 +27,8 @@ const seedUsers: User[] = [
   },
 ];
 
-const seedItems: Item[] = [
+const seedItems: Omit<Item, 'id'>[] = [
   {
-    id: 1,
     name: 'Arduino Uno',
     description: 'The Arduino Uno is a microcontroller board based on the ATmega328.',
     productModelNumber: 'R3',
@@ -48,7 +47,6 @@ const seedItems: Item[] = [
     updatedAt: new Date().toISOString(),
   },
   {
-    id: 2,
     name: 'Arduino Mega 2560',
     description: 'The Arduino Mega 2560 is a microcontroller board based on the ATmega2560.',
     productModelNumber: 'R3',
@@ -68,14 +66,47 @@ const seedItems: Item[] = [
   },
 ];
 
-export function initializeData(): void {
-  if (isInitialized()) {
+/**
+ * Initialize the database and seed data if needed
+ * This is now an async function that must be awaited
+ */
+export async function initializeData(): Promise<void> {
+  // Initialize the SQLite database
+  await initializeDatabase();
+
+  // Check if we need to migrate from localStorage
+  if (hasExistingLocalStorageData()) {
+    console.log('Detected existing localStorage data, migrating to SQLite...');
+    const result = migrateFromLocalStorage();
+    console.log('Migration result:', result);
+
+    // Verify migration
+    const verification = verifyMigration();
+    console.log('Migration verification:', verification);
     return;
   }
 
-  saveToStorage(STORAGE_KEYS.USERS, seedUsers);
-  saveToStorage(STORAGE_KEYS.ITEMS, seedItems);
-  setInitialized();
+  // Check if database already has data
+  const existingUsers = userRepository.count();
+  if (existingUsers > 0) {
+    console.log('Database already initialized with', existingUsers, 'users');
+    return;
+  }
+
+  // Seed fresh data
+  console.log('Seeding fresh database...');
+
+  // Seed users
+  for (const userData of seedUsers) {
+    userRepository.create(userData);
+  }
+
+  // Seed items
+  for (const itemData of seedItems) {
+    itemRepository.create(itemData);
+  }
+
+  console.log('Database seeded successfully');
 }
 
 export { seedUsers, seedItems };

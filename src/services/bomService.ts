@@ -1,68 +1,37 @@
 import { BOM, BOMFormData, BOMCostBreakdown } from '../types/BOM';
-import { getFromStorage, saveToStorage, STORAGE_KEYS } from './storage';
+import { bomRepository } from './db/repositories';
 import * as itemService from './itemService';
 
-function getBOMs(): BOM[] {
-  return getFromStorage<BOM[]>(STORAGE_KEYS.BOMS) || [];
-}
-
-function saveBOMs(boms: BOM[]): void {
-  saveToStorage(STORAGE_KEYS.BOMS, boms);
-}
-
 export function getAllBOMs(): BOM[] {
-  return getBOMs();
+  return bomRepository.getAll();
 }
 
 export function getBOMById(id: number): BOM | null {
-  const boms = getBOMs();
-  return boms.find((b) => b.id === id) || null;
+  return bomRepository.getById(id);
 }
 
 export function createBOM(data: BOMFormData): BOM {
-  const boms = getBOMs();
-  const newBOM: BOM = {
+  return bomRepository.create({
     ...data,
-    id: Math.max(0, ...boms.map((b) => b.id)) + 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
-
-  saveBOMs([...boms, newBOM]);
-  return newBOM;
+  });
 }
 
 export function updateBOM(id: number, data: Partial<BOMFormData>): BOM | null {
-  const boms = getBOMs();
-  const index = boms.findIndex((b) => b.id === id);
-
-  if (index === -1) {
+  const existing = bomRepository.getById(id);
+  if (!existing) {
     return null;
   }
 
-  const updatedBOM: BOM = {
-    ...boms[index],
+  return bomRepository.update(id, {
     ...data,
     updatedAt: new Date().toISOString(),
-  };
-
-  const updatedBOMs = [...boms];
-  updatedBOMs[index] = updatedBOM;
-  saveBOMs(updatedBOMs);
-
-  return updatedBOM;
+  } as Partial<BOM>);
 }
 
 export function deleteBOM(id: number): boolean {
-  const boms = getBOMs();
-  const updatedBOMs = boms.filter((b) => b.id !== id);
-
-  if (updatedBOMs.length === boms.length) {
-    return false;
-  }
-
-  saveBOMs(updatedBOMs);
-  return true;
+  return bomRepository.delete(id);
 }
 
 export function calculateBOMCost(bomId: number): BOMCostBreakdown | null {
@@ -123,8 +92,7 @@ export function checkAvailability(bomId: number): { canBuild: boolean; missingIt
 }
 
 export function getBOMsContainingItem(itemId: number): BOM[] {
-  const boms = getBOMs();
-  return boms.filter((bom) => bom.items.some((bi) => bi.itemId === itemId));
+  return bomRepository.findContainingItem(itemId);
 }
 
 export function duplicateBOM(id: number, newName: string): BOM | null {

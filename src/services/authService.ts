@@ -1,13 +1,6 @@
 import { User, UserWithoutPassword, LoginCredentials, RegisterData } from '../types/User';
 import { STORAGE_KEYS, getFromStorage, saveToStorage, removeFromStorage } from './storage';
-
-function getUsers(): User[] {
-  return getFromStorage<User[]>(STORAGE_KEYS.USERS) || [];
-}
-
-function saveUsers(users: User[]): void {
-  saveToStorage(STORAGE_KEYS.USERS, users);
-}
+import { userRepository } from './db/repositories';
 
 function stripPassword(user: User): UserWithoutPassword {
   const { password: _, ...userWithoutPassword } = user;
@@ -15,26 +8,23 @@ function stripPassword(user: User): UserWithoutPassword {
 }
 
 export function login(credentials: LoginCredentials): UserWithoutPassword | null {
-  const users = getUsers();
-  const user = users.find(
-    (u) => u.email.toLowerCase() === credentials.email.toLowerCase() && u.password === credentials.password
-  );
+  const user = userRepository.findByEmail(credentials.email);
 
-  if (!user) {
+  if (!user || user.password !== credentials.password) {
     return null;
   }
 
   // Update sign-in tracking
-  const updatedUser: User = {
-    ...user,
+  const updatedUser = userRepository.updateSignIn(user.id, {
     signInCount: user.signInCount + 1,
     lastSignInAt: new Date().toISOString(),
     lastSignInIp: '127.0.0.1',
     updatedAt: new Date().toISOString(),
-  };
+  });
 
-  const updatedUsers = users.map((u) => (u.id === user.id ? updatedUser : u));
-  saveUsers(updatedUsers);
+  if (!updatedUser) {
+    return null;
+  }
 
   const userWithoutPassword = stripPassword(updatedUser);
   saveToStorage(STORAGE_KEYS.CURRENT_USER, userWithoutPassword);
@@ -58,15 +48,12 @@ export function register(data: RegisterData): UserWithoutPassword | null {
     throw new Error('Password must be at least 8 characters');
   }
 
-  const users = getUsers();
-  const existingUser = users.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
-
+  const existingUser = userRepository.findByEmail(data.email);
   if (existingUser) {
     throw new Error('Email has already been taken');
   }
 
-  const newUser: User = {
-    id: Math.max(0, ...users.map((u) => u.id)) + 1,
+  const newUser = userRepository.create({
     email: data.email,
     password: data.password,
     role: 'user',
@@ -75,9 +62,7 @@ export function register(data: RegisterData): UserWithoutPassword | null {
     lastSignInIp: '127.0.0.1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
-
-  saveUsers([...users, newUser]);
+  });
 
   const userWithoutPassword = stripPassword(newUser);
   saveToStorage(STORAGE_KEYS.CURRENT_USER, userWithoutPassword);
@@ -88,8 +73,7 @@ export function updateProfile(
   userId: number,
   data: { email?: string; password?: string; currentPassword?: string }
 ): UserWithoutPassword | null {
-  const users = getUsers();
-  const user = users.find((u) => u.id === userId);
+  const user = userRepository.getById(userId);
 
   if (!user) {
     throw new Error('User not found');
@@ -100,23 +84,21 @@ export function updateProfile(
   }
 
   if (data.email && data.email.toLowerCase() !== user.email.toLowerCase()) {
-    const existingUser = users.find(
-      (u) => u.email.toLowerCase() === data.email!.toLowerCase() && u.id !== userId
-    );
-    if (existingUser) {
+    if (userRepository.emailExistsForOther(data.email, userId)) {
       throw new Error('Email has already been taken');
     }
   }
 
-  const updatedUser: User = {
-    ...user,
-    email: data.email || user.email,
-    password: data.password || user.password,
-    updatedAt: new Date().toISOString(),
-  };
+  const updatedAt = new Date().toISOString();
+  let updatedUser = user;
 
-  const updatedUsers = users.map((u) => (u.id === userId ? updatedUser : u));
-  saveUsers(updatedUsers);
+  if (data.email) {
+    updatedUser = userRepository.updateEmail(userId, data.email, updatedAt) || user;
+  }
+
+  if (data.password) {
+    updatedUser = userRepository.updatePassword(userId, data.password, updatedAt) || updatedUser;
+  }
 
   const userWithoutPassword = stripPassword(updatedUser);
   saveToStorage(STORAGE_KEYS.CURRENT_USER, userWithoutPassword);
@@ -124,9 +106,9 @@ export function updateProfile(
 }
 
 export function deleteAccount(userId: number): boolean {
-  const users = getUsers();
-  const updatedUsers = users.filter((u) => u.id !== userId);
-  saveUsers(updatedUsers);
-  removeFromStorage(STORAGE_KEYS.CURRENT_USER);
-  return true;
+  const result = userRepository.delete(userId);
+  if (result) {
+    removeFromStorage(STORAGE_KEYS.CURRENT_USER);
+  }
+  return result;
 }
