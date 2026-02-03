@@ -114,6 +114,27 @@ async function runMigrations(database: Database): Promise<void> {
     // Run CREATE TABLE IF NOT EXISTS to add any new tables
     database.run(CREATE_TABLES_SQL);
 
+    // Version-specific migrations
+    if (currentVersion < 2) {
+      // Add email verification columns to users table
+      try {
+        database.run('ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 1');
+      } catch {
+        // Column may already exist
+      }
+      try {
+        database.run('ALTER TABLE users ADD COLUMN email_verification_token TEXT');
+      } catch {
+        // Column may already exist
+      }
+      try {
+        database.run('ALTER TABLE users ADD COLUMN email_verification_token_expires_at TEXT');
+      } catch {
+        // Column may already exist
+      }
+      console.log('Migration to v2: Added email verification columns');
+    }
+
     // Update schema version
     database.run(
       'INSERT OR REPLACE INTO app_metadata (key, value) VALUES (?, ?)',

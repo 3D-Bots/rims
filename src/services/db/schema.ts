@@ -1,6 +1,6 @@
 // SQL Schema definitions for RIMS database
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const CREATE_TABLES_SQL = `
 -- App metadata for tracking initialization and schema version
@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
   sign_in_count INTEGER NOT NULL DEFAULT 0,
   last_sign_in_at TEXT,
   last_sign_in_ip TEXT,
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  email_verification_token TEXT,
+  email_verification_token_expires_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
