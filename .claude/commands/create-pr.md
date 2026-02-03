@@ -14,6 +14,7 @@ Create a new branch, commit changes, and submit a pull request.
 - Commits should never include "Co-Authored-By: Claude Opus 4.5
   <noreply@anthropic.com>"
 - PR's should never include "🤖 Generated with Claude Code"
+- After PR creation delete newly created local branch
 
 ## Guidelines for Automatic Commit Splitting
 
