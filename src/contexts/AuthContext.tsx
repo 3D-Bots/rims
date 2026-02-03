@@ -2,15 +2,16 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { UserWithoutPassword, LoginCredentials, RegisterData } from '../types/User';
 import * as authService from '../services/authService';
 import { initializeData } from '../data/seed';
+import { LoginResult, RegisterResult } from '../services/authService';
 
 interface AuthContextType {
   user: UserWithoutPassword | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => UserWithoutPassword | null;
+  login: (credentials: LoginCredentials) => Promise<LoginResult>;
   logout: () => void;
-  register: (data: RegisterData) => UserWithoutPassword | null;
+  register: (data: RegisterData) => Promise<RegisterResult>;
   updateProfile: (data: { email?: string; password?: string; currentPassword?: string }) => UserWithoutPassword | null;
   deleteAccount: () => boolean;
   refreshUser: () => void;
@@ -43,12 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     init();
   }, []);
 
-  const login = (credentials: LoginCredentials): UserWithoutPassword | null => {
-    const loggedInUser = authService.login(credentials);
-    if (loggedInUser) {
-      setUser(loggedInUser);
+  const login = async (credentials: LoginCredentials): Promise<LoginResult> => {
+    const result = await authService.login(credentials);
+    if (result.user) {
+      setUser(result.user);
     }
-    return loggedInUser;
+    return result;
   };
 
   const logout = () => {
@@ -56,12 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = (data: RegisterData): UserWithoutPassword | null => {
-    const newUser = authService.register(data);
-    if (newUser) {
-      setUser(newUser);
-    }
-    return newUser;
+  const register = async (data: RegisterData): Promise<RegisterResult> => {
+    // Registration now goes through the server API and doesn't auto-login
+    return authService.register(data);
   };
 
   const updateProfile = (data: { email?: string; password?: string; currentPassword?: string }): UserWithoutPassword | null => {
