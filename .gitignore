@@ -24,3 +24,10 @@ dist-ssr
 *.sw?
 
 .claude/settings.local.json
+
+# Environment variables
+.env
+.env.local
+
+# Server database
+data/
